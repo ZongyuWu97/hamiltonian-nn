@@ -9,7 +9,7 @@ import sympy
 import copy
 
 
-class KANHNN(KAN):
+class KARHNN(KAN):
 
     def __init__(
         self,
@@ -652,7 +652,7 @@ class KANHNN(KAN):
                 if i not in active_neurons_down[l]:
                     self.remove_node(l + 1, i, mode="down", log_history=False)
 
-        model2 = KANHNN(
+        model2 = KARHNN(
             input_dim=self.input_dim,
             width=copy.deepcopy(self.width),
             grid=self.grid,
@@ -886,7 +886,7 @@ class KANHNN(KAN):
         10
         """
 
-        model_new = KANHNN(
+        model_new = KARHNN(
             input_dim=self.input_dim,
             width=self.width,
             grid=new_grid,
