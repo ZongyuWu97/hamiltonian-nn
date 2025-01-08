@@ -199,7 +199,9 @@ class KARHNN(KAN):
 
         results = {}
         results["train_loss"] = []
+        results["train_std"] = []
         results["test_loss"] = []
+        results["test_std"] = []
         results["reg"] = []
         if metrics != None:
             for i in range(len(metrics)):
@@ -215,7 +217,7 @@ class KARHNN(KAN):
         global train_loss, reg_
 
         def closure():
-            global train_loss, reg_
+            global train_loss, reg_, train_std
             optimizer.zero_grad()
             pred = self.time_derivative(
                 dataset["train_input"][train_id],
@@ -275,6 +277,7 @@ class KARHNN(KAN):
                     y_th=y_th,
                 )
                 train_loss = loss_fn(pred, dataset["train_label"][train_id])
+            
                 if self.save_act:
                     if reg_metric == "edge_backward":
                         self.attribute()
@@ -303,6 +306,12 @@ class KARHNN(KAN):
             results["test_loss"].append(test_loss.cpu().detach().numpy())
             results["reg"].append(reg_.cpu().detach().numpy())
 
+            if curr_step == steps - 1:
+                train_dist = (dataset['train_label'][train_id] - self.time_derivative(dataset["train_input"][train_id]))**2
+                results['train_std'].append(train_dist.std().item()/np.sqrt(train_dist.shape[0]))
+                test_dist = (dataset['test_label'][test_id] - self.time_derivative(dataset["test_input"][test_id]))**2
+                results['test_std'].append(test_dist.std().item()/np.sqrt(test_dist.shape[0]))
+                
             if curr_step % log == 0:
                 if display_metrics == None:
                     pbar.set_description(
