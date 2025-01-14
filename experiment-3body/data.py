@@ -11,6 +11,25 @@ sys.path.append(parent_dir)
 
 from utils import to_pickle, from_pickle
 
+##########################################################
+# Helper: Central finite difference on a 1D array
+##########################################################
+def finite_difference(x, t):
+    """
+    Compute dx/dt for a 2D array x(t) using central differences.
+    x: shape [T,n] (values of x at each time step)
+    t: shape [T,n] (corresponding time array, assumed uniform spacing)
+    Returns: shape [T,n] the finite-difference approximation to dx/dt
+    """
+    dx = np.zeros_like(x)
+    dt = t[1] - t[0]  # assume uniform spacing
+    # central difference for interior points
+    dx[1:-1, :] = (x[2:, :] - x[:-2, :]) / (2 * dt)
+    # forward/backward difference or edges
+    dx[0, :]    = (x[1, :] - x[0, :]) / dt
+    dx[-1, :]   = (x[-1, :] - x[-2, :]) / dt
+    return dx
+
 ##### ENERGY #####
 def potential_energy(state):
     '''U=\sum_i,j>i G m_i m_j / r_ij'''
@@ -117,6 +136,7 @@ def sample_orbits(timesteps=20, trials=5000, nbodies=3, orbit_noise=2e-1,
     if verbose:
         print("Making a dataset of near-circular 3-body orbits:")
     
+    t_eval = np.linspace(t_span[0], t_span[1], timesteps)
     x, dx, e = [], [], []
     N = timesteps*trials
     while len(x) < N:
@@ -125,19 +145,29 @@ def sample_orbits(timesteps=20, trials=5000, nbodies=3, orbit_noise=2e-1,
         orbit, settings = get_orbit(state, t_points=timesteps, t_span=t_span, nbodies=nbodies, **kwargs)
         batch = orbit.transpose(2,0,1).reshape(-1,nbodies*5)
 
-        for state in batch:
-            dstate = update(None, state)
+        q = np.zeros((timesteps, nbodies*2))
+        for i, state in enumerate(batch):
+            # dstate = update(None, state)
             
             # reshape from [nbodies, state] where state=[m, qx, qy, px, py]
             # to [canonical_coords] = [qx1, qx2, qy1, qy2, px1,px2,....]
             coords = state.reshape(nbodies,5).T[1:].flatten()
-            dcoords = dstate.reshape(nbodies,5).T[1:].flatten()
-            x.append(coords)
-            dx.append(dcoords)
-
+            q[i, :] = coords[:nbodies*2]
+            
             shaped_state = state.copy().reshape(nbodies,5,1)
             e.append(total_energy(shaped_state))
+            
+        dqdt = finite_difference(q, t_eval[:2])
+        p = dqdt
+        dpdt = finite_difference(p, t_eval[:2])
+        new_coords = np.concatenate([q, p], axis=1)
+        dcoords = np.concatenate([dqdt, dpdt], axis=1)
 
+        x.extend(new_coords)
+        dx.extend(dcoords)
+
+        print('{}% dataset build'.format(100*len(x)/N), end='\r')
+        
     data = {'coords': np.stack(x)[:N],
             'dcoords': np.stack(dx)[:N],
             'energy': np.stack(e)[:N] }

@@ -31,7 +31,7 @@ def finite_difference(x, t):
 ##########################################################
 def hamiltonian_fn(coords):
     q, p = np.split(coords, 2)
-    H = p**2 + q**2
+    H = 0.5 * p**2 + 0.5 * q**2
     return H
 
 ##########################################################
@@ -51,7 +51,7 @@ def dynamics_fn(t, coords):
 #   4) Approximate p(t), dq/dt, dp/dt via finite differences.
 #   5) Return them in the same shape as before.
 ##########################################################
-def get_trajectory(t_span=[0,3], timescale=100, radius=None, y0=None, noise_std=0.01, **kwargs):
+def get_trajectory(t_span=[0,3], timescale=100, radius=None, y0=None, noise_std=0.1, **kwargs):
     t_eval = np.linspace(t_span[0], t_span[1], int(timescale*(t_span[1]-t_span[0])))
 
     # 1) Generate a valid initial condition for (q, p)
@@ -68,14 +68,16 @@ def get_trajectory(t_span=[0,3], timescale=100, radius=None, y0=None, noise_std=
     q_true = spring_ivp['y'][0]  # shape [T,]
     # p_true = spring_ivp['y'][1]  # we won't use p_true
 
-    # 3) Add noise only to q
+
     q_noisy = q_true
-    #q_noisy = q_true + np.random.randn(*q_true.shape) * 0.005
 
     # 4) Approximate p, dq/dt, dp/dt from q_noisy via finite differences
     dqdt_approx = finite_difference(q_noisy, t_eval)      # partial q / partial t
-    p_approx    = dqdt_approx
+    p_approx    = dqdt_approx                      # from q' = 2p => p = q'/2
     dpdt_approx = finite_difference(p_approx, t_eval)    # partial p / partial t
+
+    # 3) Add noise only to q
+    q_noisy = q_true + np.random.randn(*q_true.shape) * noise_std
 
     # 5) Return: q_noisy, p_approx, dqdt_approx, dpdt_approx, t_eval
     return q_noisy, p_approx, dqdt_approx, dpdt_approx, t_eval
@@ -84,7 +86,7 @@ def get_trajectory(t_span=[0,3], timescale=100, radius=None, y0=None, noise_std=
 # Unchanged: randomly sample multiple trajectories
 #            but now it uses the modified get_trajectory()
 ##########################################################
-def get_dataset(seed=0, samples=50, test_split=0.5, **kwargs):
+def get_dataset(seed=0, samples=100, test_split=0.5, **kwargs):
     data = {'meta': locals()}
 
     # randomly sample inputs
