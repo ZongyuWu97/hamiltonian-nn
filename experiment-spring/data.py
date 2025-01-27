@@ -37,6 +37,7 @@ def get_trajectory(
     spring_ivp = solve_ivp(
         fun=dynamics_fn, t_span=t_span, y0=y0, t_eval=t_eval, rtol=1e-10, **kwargs
     )
+
     q, p = spring_ivp["y"][0], spring_ivp["y"][1]
     dydt = [dynamics_fn(None, y) for y in spring_ivp["y"].T]
     dydt = np.stack(dydt).T
