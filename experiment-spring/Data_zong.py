@@ -158,24 +158,27 @@ def get_trajectory(t_span=[0, 3],
 
     q = sol.y[0]
     p = sol.y[1]
+    
     # Also get the exact derivatives from the ODE for reference if you want them
     # But you had that in your original code. We'll skip it unless needed.
 
     # 2) Generate correlated noise for q, p
-    grf_q = generate_gaussian_random_field_1d(num_points, alpha=alpha, seed=seed)
-    grf_p = generate_gaussian_random_field_1d(num_points, alpha=alpha, seed=seed + 1 if seed is not None else None)
+    # grf_q = generate_gaussian_random_field_1d(num_points, alpha=alpha, seed=seed)
+    # grf_p = generate_gaussian_random_field_1d(num_points, alpha=alpha, seed=seed + 1 if seed is not None else None)
 
-    q_noisy = q + grf_q * noise_std
-    p_noisy = p + grf_p * noise_std
+    q_noisy = q + np.random.randn(*q.shape) * noise_std
+    p_noisy = p + np.random.randn(*p.shape) * noise_std
 
     # 3) Low-pass filter
     q_denoised = fourier_filter(q_noisy, keep_frequency=keep_frequency)
     p_denoised = fourier_filter(p_noisy, keep_frequency=keep_frequency)
 
     # 4) Compute derivatives (5-point FD)
-    dt = t_eval[1] - t_eval[0]
-    dqdt = five_point_derivative(q_denoised, dt)
-    dpdt = five_point_derivative(p_denoised, dt)
+    dydt = [dynamics_fn(None, y) for y in sol['y'].T]
+    dydt = np.stack(dydt)
+    # print('dydt shape:', dydt.shape)
+    # print('dydt:', dydt)
+    dqdt, dpdt = np.split(dydt, 2, axis=1)
 
     # 5) Discard first 15% and last 15% => keep middle 70%
     N = len(t_eval)
@@ -195,7 +198,8 @@ def get_trajectory(t_span=[0, 3],
     dqdt_return = dqdt[start_ix:end_ix]
     dpdt_return = dpdt[start_ix:end_ix]
     t_return = t_eval[start_ix:end_ix]
-
+    # print('q_return shape:', q_return.shape)
+    # print('dqdt_return shape:', dqdt_return.shape)
     return q_return, p_return, dqdt_return, dpdt_return, t_return
 
 
