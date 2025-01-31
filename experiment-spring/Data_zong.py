@@ -141,7 +141,7 @@ def get_trajectory(t_span=[0, 3],
     if y0 is None:
         y0 = np.random.rand(2) * 2 - 1
     if radius is None:
-        radius = np.random.rand() * 0.9 + 0.1
+        radius = np.random.rand() * 2 + 0.9
     y0 = y0 / np.sqrt((y0**2).sum()) * radius
 
     # Solve IVP with the chosen dynamics
